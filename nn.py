@@ -70,6 +70,15 @@ class Tensor(object):
                 
                 if self.op == "transpose":
                     self.parents[0].backward(self.grad.transpose())
+                
+                if "sum" in self.op:
+                    axis = int(self.op.split("_")[1])
+                    ds = self.parents[0].data.shape[axis]
+                    self.parents[0].backward(self.grad.expand(axis, ds))
+                
+                if "expand" in self.op:
+                    axis = int(self.op.split("_")[1])
+                    self.parents[0].backward(self.grad.sum(axis))
 
     def __add__(self, other):
         if self.autograd and other.autograd:
@@ -100,6 +109,22 @@ class Tensor(object):
         if self.autograd:
             return Tensor(self.data.transpose(), autograd=True, parents=[self], op="transpose")
         return Tensor(self.data.transpose())
+    
+    def sum(self, axis):
+        if self.autograd:
+            return Tensor(self.data.sum(axis), autograd=True, parents=[self], op="sum_"+str(axis))
+        return Tensor(self.data.sum(axis))
+    
+    def expand(self, axis, copies):
+        transpose_cmd = list(range(0, len(self.data.shape)))
+        transpose_cmd.insert(axis, len(self.data.shape))
+        new_shape = list(self.data.shape) + [copies]
+        new_data = self.data.repeat(copies).reshape(new_shape)
+        new_data = new_data.transpose(transpose_cmd)
+        
+        if self.autograd:
+            return Tensor(new_data, autograd=True, parents=[self], op="expand_"+str(axis))
+        return Tensor(new_data)
     
     def __repr__(self):
         return str(self.data.__repr__())
