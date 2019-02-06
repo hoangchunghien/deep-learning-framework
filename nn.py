@@ -100,6 +100,10 @@ class Tensor(object):
                     for i in range(len(indices_)):
                         new_grad[indices_[i]] += grad_[i]
                     self.parents[0].backward(Tensor(new_grad))
+                
+                if self.op == "cross_entropy":
+                    dx = self.softmax_output - self.target_dist
+                    self.parents[0].backward(Tensor(dx))
 
     def __add__(self, other):
         if self.autograd and other.autograd:
@@ -168,6 +172,21 @@ class Tensor(object):
             new.index_select_indices = indices
             return new
         return Tensor(self.data[indices.data])
+    
+    def cross_entropy(self, target_indices):
+        temp = np.exp(self.data)
+        softmax_ = temp / np.sum(temp, axis=len(self.data.shape)-1, keepdims=True)
+        t = target_indices.data.flatten()
+        p = softmax_.reshape(len(t), -1)
+        target_dist = np.eye(p.shape[1])[t]
+        loss = -(np.log(p) * (target_dist)).sum(1).mean()
+
+        if (self.autograd):
+            out = Tensor(loss, autograd=True, parents=[self], op="cross_entropy")
+            out.softmax_output = softmax_
+            out.target_dist = target_dist
+            return out
+        return Tensor(loss)
     
     def __repr__(self):
         return str(self.data.__repr__())
