@@ -84,6 +84,14 @@ class Tensor(object):
                 if "expand" in self.op:
                     axis = int(self.op.split("_")[1])
                     self.parents[0].backward(self.grad.sum(axis))
+                
+                if self.op == "sigmoid":
+                    ones = Tensor(np.ones_like(self.grad.data))
+                    self.parents[0].backward(self.grad * (self * (ones - self)))
+                
+                if self.op == "tanh":
+                    ones = Tensor(np.ones_like(self.grad.data))
+                    self.parents[0].backward(self.grad * (ones - (self * self)))
 
     def __add__(self, other):
         if self.autograd and other.autograd:
@@ -136,6 +144,16 @@ class Tensor(object):
             return Tensor(new_data, autograd=True, parents=[self], op="expand_"+str(axis))
         return Tensor(new_data)
     
+    def sigmoid(self):
+        if self.autograd:
+            return Tensor(1 / (1+np.exp(-self.data)), autograd=True, parents=[self], op="sigmoid")
+        return Tensor(1 / (1 + np.exp(-self.data)))
+    
+    def tanh(self):
+        if self.autograd:
+            return Tensor(np.tanh(self.data), autograd=True, parents=[self], op="tanh")
+        return Tensor(np.tanh(self.data))
+    
     def __repr__(self):
         return str(self.data.__repr__())
     
@@ -183,3 +201,19 @@ class Sequential(Layer):
         for l in self.layers:
             params += l.get_parameters()
         return params
+
+
+class Tanh(Layer):
+    def __init__(self):
+        super().__init__()
+    
+    def forward(self, input):
+        return input.tanh()
+
+
+class Sigmoid(Layer):
+    def __init__(self):
+        super().__init__()
+    
+    def forward(self, input):
+        return input.sigmoid()
