@@ -55,6 +55,12 @@ class Tensor(object):
                     self.parents[0].backward(new, self)
                     new = Tensor(self.grad.__neg__().data)
                     self.parents[1].backward(new, self)
+                
+                if self.op == "mul":
+                    new = self.grad * self.parents[1]
+                    self.parents[0].backward(new, self)
+                    new = self.grad * self.parents[0]
+                    self.parents[1].backward(new, self)
 
     def __add__(self, other):
         if self.autograd and other.autograd:
@@ -70,6 +76,11 @@ class Tensor(object):
         if self.autograd:
             return Tensor(self.data - other.data, autograd=True, parents=[self, other], op="sub")
         return Tensor(self.data - other.data)
+    
+    def __mul__(self, other):
+        if self.autograd:
+            return Tensor(self.data * other.data, autograd=True, parents=[self, other], op="mul")
+        return Tensor(self.data * other.data)
     
     def __repr__(self):
         return str(self.data.__repr__())
