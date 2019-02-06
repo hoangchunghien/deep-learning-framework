@@ -49,6 +49,12 @@ class Tensor(object):
                 
                 if self.op == "neg":
                     self.parents[0].backward(self.grad.__neg__())
+                
+                if self.op == "sub":
+                    new = Tensor(self.grad.data)
+                    self.parents[0].backward(new, self)
+                    new = Tensor(self.grad.__neg__().data)
+                    self.parents[1].backward(new, self)
 
     def __add__(self, other):
         if self.autograd and other.autograd:
@@ -59,6 +65,11 @@ class Tensor(object):
         if self.autograd:
             return Tensor(self.data * -1, autograd=True, parents=[self], op="neg")
         return Tensor(self.data * -1)
+    
+    def __sub__(self, other):
+        if self.autograd:
+            return Tensor(self.data - other.data, autograd=True, parents=[self, other], op="sub")
+        return Tensor(self.data - other.data)
     
     def __repr__(self):
         return str(self.data.__repr__())
