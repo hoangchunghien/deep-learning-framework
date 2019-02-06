@@ -92,6 +92,14 @@ class Tensor(object):
                 if self.op == "tanh":
                     ones = Tensor(np.ones_like(self.grad.data))
                     self.parents[0].backward(self.grad * (ones - (self * self)))
+                
+                if self.op == "index_select":
+                    new_grad = np.zeros_like(self.parents[0].data)
+                    indices_ = self.index_select_indices.data.flatten()
+                    grad_ = grad.data.reshape(len(indices_), -1)
+                    for i in range(len(indices_)):
+                        new_grad[indices_[i]] += grad_[i]
+                    self.parents[0].backward(Tensor(new_grad))
 
     def __add__(self, other):
         if self.autograd and other.autograd:
@@ -153,6 +161,13 @@ class Tensor(object):
         if self.autograd:
             return Tensor(np.tanh(self.data), autograd=True, parents=[self], op="tanh")
         return Tensor(np.tanh(self.data))
+    
+    def index_select(self, indices):
+        if self.autograd:
+            new = Tensor(self.data[indices.data], autograd=True, parents=[self], op="index_select")
+            new.index_select_indices = indices
+            return new
+        return Tensor(self.data[indices.data])
     
     def __repr__(self):
         return str(self.data.__repr__())
@@ -217,3 +232,16 @@ class Sigmoid(Layer):
     
     def forward(self, input):
         return input.sigmoid()
+
+class Embedding(Layer):
+    def __init__(self, vocab_size, dim):
+        super().__init__()
+        self.vocab_size = vocab_size
+        self.dim = dim
+        weight = np.random.rand(vocab_size, dim) / dim
+        self.weight = Tensor(weight, autograd=True)
+
+        self.parameters.append(self.weight)
+    
+    def forward(self, input):
+        return self.weight.index_select(input)
