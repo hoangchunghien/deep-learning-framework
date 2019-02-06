@@ -40,17 +40,25 @@ class Tensor(object):
                 self.grad += grad  # Accumulates grad from many children
 
             if self.parents is not None and \
-                # Check whether a tensor receive enough number of gradients from each child
                 (all([not cnt != 0 for _, cnt in self.children.items()]) or grad_origin is None):
+                # Check whether a tensor receive enough number of gradients from each child
                 
                 if self.op == 'add':
                     self.parents[0].backward(self.grad, self)
                     self.parents[1].backward(self.grad, self)
+                
+                if self.op == "neg":
+                    self.parents[0].backward(self.grad.__neg__())
 
     def __add__(self, other):
         if self.autograd and other.autograd:
             return Tensor(self.data + other.data, autograd=True, parents=[self, other], op="add")
         return Tensor(self.data + other.data)
+    
+    def __neg__(self):
+        if self.autograd:
+            return Tensor(self.data * -1, autograd=True, parents=[self], op="neg")
+        return Tensor(self.data * -1)
     
     def __repr__(self):
         return str(self.data.__repr__())
