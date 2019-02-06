@@ -76,6 +76,11 @@ class Tensor(object):
                     ds = self.parents[0].data.shape[axis]
                     self.parents[0].backward(self.grad.expand(axis, ds))
                 
+                if "mean" in self.op:
+                    axis = int(self.op.split("_")[1])
+                    ds = self.parents[0].data.shape[axis]
+                    self.parents[0].backward(self.grad.expand(axis, ds))
+                
                 if "expand" in self.op:
                     axis = int(self.op.split("_")[1])
                     self.parents[0].backward(self.grad.sum(axis))
@@ -114,6 +119,11 @@ class Tensor(object):
         if self.autograd:
             return Tensor(self.data.sum(axis), autograd=True, parents=[self], op="sum_"+str(axis))
         return Tensor(self.data.sum(axis))
+    
+    def mean(self, axis):
+        if self.autograd:
+            return Tensor(self.data.mean(axis), autograd=True, parents=[self], op="mean_"+str(axis))
+        return Tensor(self.data.mean(axis))
     
     def expand(self, axis, copies):
         transpose_cmd = list(range(0, len(self.data.shape)))
