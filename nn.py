@@ -61,6 +61,15 @@ class Tensor(object):
                     self.parents[0].backward(new, self)
                     new = self.grad * self.parents[0]
                     self.parents[1].backward(new, self)
+                
+                if self.op == "mm":
+                    new = self.grad.mm(self.parents[1].transpose())
+                    self.parents[0].backward(new)
+                    new = self.grad.transpose().mm(self.parents[0]).transpose()
+                    self.parents[1].backward(new)
+                
+                if self.op == "transpose":
+                    self.parents[0].backward(self.grad.transpose())
 
     def __add__(self, other):
         if self.autograd and other.autograd:
@@ -81,6 +90,16 @@ class Tensor(object):
         if self.autograd:
             return Tensor(self.data * other.data, autograd=True, parents=[self, other], op="mul")
         return Tensor(self.data * other.data)
+    
+    def mm(self, x):
+        if self.autograd:
+            return Tensor(self.data.dot(x.data), autograd=True, parents=[self, x], op="mm")
+        return Tensor(self.data.dot(x.data))
+    
+    def transpose(self):
+        if self.autograd:
+            return Tensor(self.data.transpose(), autograd=True, parents=[self], op="transpose")
+        return Tensor(self.data.transpose())
     
     def __repr__(self):
         return str(self.data.__repr__())
